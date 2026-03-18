@@ -21,6 +21,13 @@ def create_app(config_name=None):
     
     # Configuration — all secrets come from .env
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-me-in-production')
+    
+    # Enable Secure Cookies & Proxy headers for Vercel
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+    app.config['SESSION_COOKIE_SECURE'] = True
+    app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+    
     # Use /tmp for sqlite in serverless environments if no DB URL is provided
     is_vercel = os.environ.get('VERCEL') == '1'
     default_db = 'sqlite:////tmp/vyas_tracker.db' if is_vercel else 'sqlite:///vyas_tracker.db'
