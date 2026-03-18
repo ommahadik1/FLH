@@ -35,6 +35,13 @@ def user_login_required(f):
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
             return redirect(url_for('auth.login'))
+            
+        user = User.query.get(session['user_id'])
+        if not user:
+            session.clear()
+            flash('Account not found. If using a temporary database on Vercel, it may have reset. Please sign up again.', 'error')
+            return redirect(url_for('auth.login'))
+            
         return f(*args, **kwargs)
     return decorated_function
 
@@ -188,6 +195,11 @@ def setup_password():
             return render_template('setup_password.html')
             
         user = User.query.filter_by(email=email).first()
+        if not user:
+            flash('Account not found (the temporary server database may have reset). Please sign up again.', 'error')
+            session.pop('setup_email', None)
+            return redirect(url_for('auth.signup'))
+            
         user.set_password(password)
         user.is_verified = True
         user.verification_token = None
