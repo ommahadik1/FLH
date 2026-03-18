@@ -25,7 +25,11 @@ def create_app(config_name=None):
     is_vercel = os.environ.get('VERCEL') == '1'
     default_db = 'sqlite:////tmp/vyas_tracker.db' if is_vercel else 'sqlite:///vyas_tracker.db'
     
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', default_db)
+    db_url = os.environ.get('DATABASE_URL', default_db)
+    if db_url and db_url.startswith('postgres://'):
+        db_url = db_url.replace('postgres://', 'postgresql://', 1)
+        
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
     # Uploads on Vercel should ideally use external storage. For making the app bootable:
