@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    from app import create_app; create_app()
+                                ~~~~~~~~~~^^
+  File "C:\Users\OM\OneDrive\Desktop\FLH\FixLink-V1\app\__init__.py", line 25, in create_app
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-me-in-production')
+                               ^^
+UnboundLocalError: cannot access local variable 'os' where it is not associated with a value

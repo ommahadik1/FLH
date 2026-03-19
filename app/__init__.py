@@ -127,11 +127,10 @@ def create_app(config_name=None):
         from .models import Building
         if not Building.query.filter_by(name='Vyas').first():
             try:
-                import sys
-                import os
+                import sys as _sys
                 root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                if root_path not in sys.path:
-                    sys.path.insert(0, root_path)
+                if root_path not in _sys.path:
+                    _sys.path.insert(0, root_path)
                 from scripts.init_data import create_vyas_data
                 create_vyas_data(app)
             except Exception as e:
