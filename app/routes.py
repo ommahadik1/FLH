@@ -124,31 +124,29 @@ def submit_report():
             return jsonify({'success': False, 'errors': errors}), 400
         return render_template('report.html', errors=errors), 400
     
-    # Handle image upload
-    image_filename = None
-    if 'image' in request.files:
-        file = request.files['image']
-        if file and file.filename and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            # Add timestamp to filename to avoid collisions
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            filename = f"{timestamp}_{filename}"
-            
-            if os.environ.get('VERCEL') == '1' and os.environ.get('CLOUDINARY_CLOUD_NAME'):
-                import cloudinary.uploader
-                # Upload directly to Cloudinary
-                cloudinary.uploader.upload(
-                    file, 
-                    public_id=filename,
-                    folder="vyas_uploads"
-                )
-            else:
-                file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-                file.save(file_path)
-                
-            image_filename = filename
-    
     try:
+        # Handle image upload
+        image_filename = None
+        if 'image' in request.files:
+            file = request.files['image']
+            if file and file.filename and allowed_file(file.filename):
+                filename = secure_filename(file.filename)
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                filename = f"{timestamp}_{filename}"
+                
+                if os.environ.get('VERCEL') == '1' and os.environ.get('CLOUDINARY_CLOUD_NAME'):
+                    import cloudinary.uploader
+                    cloudinary.uploader.upload(
+                        file, 
+                        public_id=filename,
+                        folder="vyas_uploads"
+                    )
+                else:
+                    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                    file.save(file_path)
+                    
+                image_filename = filename
+
         # Create ticket
         ticket = Ticket(
             room_id=int(room_id),

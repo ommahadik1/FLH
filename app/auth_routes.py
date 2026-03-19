@@ -130,6 +130,7 @@ def signup():
             name=name,
             prn=prn,
             email=email,
+            is_admin=True,
             is_verified=False,
             verification_token=token
         )
