@@ -122,5 +122,19 @@ def create_app(config_name=None):
             admin_user.set_password('Taha10vesgono!')
             db.session.add(admin_user)
             db.session.commit()
+            
+        # Initialize building data if missing
+        from .models import Building
+        if not Building.query.filter_by(name='Vyas').first():
+            try:
+                import sys
+                import os
+                root_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if root_path not in sys.path:
+                    sys.path.insert(0, root_path)
+                from scripts.init_data import create_vyas_data
+                create_vyas_data(app)
+            except Exception as e:
+                print(f"Failed to initialize building data: {e}")
     
     return app

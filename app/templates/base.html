@@ -219,13 +219,14 @@
         if (!document.getElementById('navAvatar')) return; // not logged in
 
         function getInitials(name) {
+            if (!name || name.trim() === '') return '?';
             const parts = name.trim().split(/\s+/);
             if (parts.length === 1) return parts[0][0].toUpperCase();
             return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
         }
 
         function setAvatar(name, photoUrl) {
-            const initials = getInitials(name || '?');
+            const initials = getInitials(name);
             [
                 { ini: 'navAvatarInitials',        img: 'navAvatarImg' },
                 { ini: 'navAvatarInitialsDropdown', img: 'navAvatarImgDropdown' }
@@ -246,21 +247,28 @@
             const nameEl = document.getElementById('profileName');
             if (document.getElementById('removePhotoBtn'))
                 document.getElementById('removePhotoBtn').classList.toggle('d-none', !photoUrl);
-            if (nameEl) nameEl.textContent = name;
+            if (nameEl) nameEl.textContent = name || 'Student';
         }
 
         // Fetch current user from server
-        fetch('/api/me')
-            .then(r => r.json())
+        fetch('/api/me', { credentials: 'same-origin' })
+            .then(r => {
+                if (!r.ok) throw new Error('Network response was not ok');
+                return r.json();
+            })
             .then(data => {
                 if (!data.success) return;
                 const emailEl = document.getElementById('profileEmail');
                 const prnEl = document.getElementById('profilePRN');
-                if (emailEl) emailEl.textContent = data.email;
+                if (emailEl) emailEl.textContent = data.email || '—';
                 if (prnEl) prnEl.textContent = data.prn || '—';
                 setAvatar(data.name, data.photo_url);
             })
-            .catch(() => {});
+            .catch((e) => {
+                console.error("Profile fetch error:", e);
+                const nameEl = document.getElementById('profileName');
+                if (nameEl) nameEl.textContent = 'Error loading profile';
+            });
 
         // Photo upload
         const uploadInput = document.getElementById('photoUploadInput');

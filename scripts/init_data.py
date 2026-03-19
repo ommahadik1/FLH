@@ -18,9 +18,9 @@ from app import create_app, db
 from app.models import Building, Floor, Room, Asset
 
 
-def create_vyas_data():
+def create_vyas_data(app_instance=None):
     """Create Vyas building with floors and rooms."""
-    app = create_app()
+    app = app_instance or create_app()
     
     with app.app_context():
         print("=" * 60)
@@ -30,20 +30,9 @@ def create_vyas_data():
         # Check if data already exists
         existing = Building.query.filter_by(name='Vyas').first()
         if existing:
-            print(f"\n⚠️  Vyas building already exists.")
-            response = input("Do you want to reset and recreate all data? (y/N): ")
-            if response.lower() != 'y':
-                print("Operation cancelled.")
-                return
+            print(f"\n✅  Vyas building already exists.")
+            return
             
-            # Clear existing data
-            print("\n🗑️  Clearing existing data...")
-            Asset.query.delete()
-            Room.query.delete()
-            Floor.query.delete()
-            Building.query.delete()
-            db.session.commit()
-            print("✅ Existing data cleared.")
         
         # Create Vyas Building
         print("\n🏢 Creating Vyas Building...")
