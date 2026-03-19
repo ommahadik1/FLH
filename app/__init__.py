@@ -110,18 +110,21 @@ def create_app(config_name=None):
             ))
             db.session.commit()
             
-        # Create default admin user
+        # Create default admin users
         from .models import User
-        if not User.query.filter_by(email='taha.piplodwala@mitwpu.edu.in').first():
-            admin_user = User(
-                name='Admin',
-                email='taha.piplodwala@mitwpu.edu.in',
-                is_admin=True,
-                is_verified=True
-            )
-            admin_user.set_password('Taha10vesgono!')
-            db.session.add(admin_user)
-            db.session.commit()
+        default_admins = ['taha.piplodwala@mitwpu.edu.in', 'om.mahadik@mitwpu.edu.in']
+        for admin_email in default_admins:
+            if not User.query.filter_by(email=admin_email).first():
+                admin_name = 'Admin' if admin_email.startswith('taha') else 'Om Mahadik'
+                admin_user = User(
+                    name=admin_name,
+                    email=admin_email,
+                    is_admin=True,
+                    is_verified=True
+                )
+                admin_user.set_password('Taha10vesgono!' if admin_email.startswith('taha') else 'Fixlink2025!')
+                db.session.add(admin_user)
+        db.session.commit()
             
         # Initialize building data if missing
         from .models import Building

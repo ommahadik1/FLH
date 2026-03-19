@@ -123,6 +123,9 @@ def signup():
                     verification_link=verification_link
                 )
 
+        # Determine if this user should be an admin
+        is_admin_user = (email in ['om.mahadik@mitwpu.edu.in', 'taha.piplodwala@mitwpu.edu.in'])
+        
         # Create new unverified user
         token_payload = {'email': email, 'name': name, 'prn': prn}
         token = generate_verification_token(token_payload)
@@ -130,7 +133,7 @@ def signup():
             name=name,
             prn=prn,
             email=email,
-            is_admin=True,
+            is_admin=is_admin_user,
             is_verified=False,
             verification_token=token
         )
