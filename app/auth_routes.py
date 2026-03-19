@@ -12,21 +12,21 @@ from .email_utils import send_verification_email, send_password_reset_email
 
 auth_bp = Blueprint('auth', __name__)
 
-def generate_verification_token(email):
+def generate_verification_token(payload):
     serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
-    return serializer.dumps(email, salt='email-verification-salt')
+    return serializer.dumps(payload, salt='email-verification-salt')
 
 def confirm_verification_token(token, expiration=3600):
     serializer = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
     try:
-        email = serializer.loads(
+        payload = serializer.loads(
             token,
             salt='email-verification-salt',
             max_age=expiration
         )
     except:
         return False
-    return email
+    return payload
 
 
 def user_login_required(f):
@@ -55,8 +55,8 @@ def login():
             return redirect(url_for('admin.dashboard')) if user.is_admin else redirect(url_for('main.report_form'))
             
     if request.method == 'POST':
-        email = request.form.get('email', '').strip()
-        password = request.form.get('password', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
         
         user = User.query.filter_by(email=email).first()
         
@@ -106,7 +106,8 @@ def signup():
                 return render_template('signup.html', name=name, prn=prn, email=email)
             else:
                 # Account exists but not verified — refresh token and resend
-                token = generate_verification_token(email)
+                token_payload = {'email': email, 'name': existing_user.name, 'prn': existing_user.prn}
+                token = generate_verification_token(token_payload)
                 existing_user.verification_token = token
                 db.session.commit()
                 verification_link = url_for('auth.verify_email', token=token, _external=True)
@@ -123,7 +124,8 @@ def signup():
                 )
 
         # Create new unverified user
-        token = generate_verification_token(email)
+        token_payload = {'email': email, 'name': name, 'prn': prn}
+        token = generate_verification_token(token_payload)
         user = User(
             name=name,
             prn=prn,
@@ -155,15 +157,26 @@ def signup():
 @auth_bp.route('/verify/<token>')
 def verify_email(token):
     """Verify the email and direct user to setup their password."""
-    email = confirm_verification_token(token)
-    if not email:
+    payload = confirm_verification_token(token)
+    if not payload:
         flash('The verification link is invalid or has expired.', 'error')
         return redirect(url_for('auth.signup'))
         
+    if isinstance(payload, dict):
+        email = payload.get('email')
+        name = payload.get('name', 'Student')
+        prn = payload.get('prn', '')
+    else:
+        email = payload
+        name = 'Student'
+        prn = ''
+        
     user = User.query.filter_by(email=email).first()
     if not user:
-        flash('User not found.', 'error')
-        return redirect(url_for('auth.signup'))
+        # Recover user if DB wiped
+        user = User(name=name, prn=prn, email=email, is_verified=False, verification_token=token)
+        db.session.add(user)
+        db.session.commit()
         
     if user.is_verified:
         flash('Account already verified. Please login.', 'info')
@@ -171,6 +184,8 @@ def verify_email(token):
         
     # Valid token, let them set password
     session['setup_email'] = email
+    session['setup_name'] = name
+    session['setup_prn'] = prn
     return redirect(url_for('auth.setup_password'))
 
 
@@ -196,9 +211,11 @@ def setup_password():
             
         user = User.query.filter_by(email=email).first()
         if not user:
-            flash('Account not found (the temporary server database may have reset). Please sign up again.', 'error')
-            session.pop('setup_email', None)
-            return redirect(url_for('auth.signup'))
+            # Recover again just in case DB wiped between verify and POST setup_password
+            name = session.get('setup_name', 'Student')
+            prn = session.get('setup_prn', '')
+            user = User(name=name, prn=prn, email=email, is_verified=False)
+            db.session.add(user)
             
         user.set_password(password)
         user.is_verified = True
@@ -281,7 +298,7 @@ def forgot_password():
 
         # Always show the same message to avoid user enumeration
         if user and user.is_verified:
-            token = generate_verification_token(email)
+            token = generate_verification_token({'email': email})
             user.verification_token = token
             db.session.commit()
             reset_link = url_for('auth.reset_password', token=token, _external=True)
@@ -312,10 +329,15 @@ def forgot_password():
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     """Verify token and allow the user to set a new password."""
-    email = confirm_verification_token(token)
-    if not email:
+    payload = confirm_verification_token(token)
+    if not payload:
         flash('The reset link is invalid or has expired.', 'error')
         return redirect(url_for('auth.forgot_password'))
+
+    if isinstance(payload, dict):
+        email = payload.get('email')
+    else:
+        email = payload
 
     user = User.query.filter_by(email=email).first()
     if not user:
