@@ -3,12 +3,14 @@ MIT-WPU Vyas Smart-Room Maintenance Tracker
 Flask Application Factory
 """
 import os
-from flask import Flask
+from flask import Flask, redirect, request
 from flask_sqlalchemy import SQLAlchemy
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+import cloudinary
 
 db = SQLAlchemy()
 
@@ -21,6 +23,14 @@ def create_app(config_name=None):
     
     # Configuration — all secrets come from .env
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-me-in-production')
+    
+    # Configure Cloudinary
+    if os.environ.get('CLOUDINARY_CLOUD_NAME'):
+        cloudinary.config(
+            cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+            api_key=os.environ.get('CLOUDINARY_API_KEY'),
+            api_secret=os.environ.get('CLOUDINARY_API_SECRET')
+        )
     
     # Enable Secure Cookies & Proxy headers for Vercel
     from werkzeug.middleware.proxy_fix import ProxyFix
@@ -59,6 +69,15 @@ def create_app(config_name=None):
     
     # Initialize extensions
     db.init_app(app)
+    
+    # Cloudinary proxy for Vercel uploads
+    @app.before_request
+    def handle_static_uploads():
+        if request.path.startswith('/static/uploads/') and is_vercel:
+            filename = request.path[len('/static/uploads/'):]
+            cloud_name = os.environ.get('CLOUDINARY_CLOUD_NAME')
+            if cloud_name:
+                return redirect(f"https://res.cloudinary.com/{cloud_name}/image/upload/vyas_uploads/{filename}")
     
     # Register blueprints
     from .routes import main_bp

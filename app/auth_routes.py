@@ -257,16 +257,32 @@ def upload_profile_photo():
 
     # Delete old photo if it exists
     if user.profile_photo:
-        old_path = os.path.join(current_app.config['UPLOAD_FOLDER'], user.profile_photo)
-        if os.path.exists(old_path):
-            os.remove(old_path)
+        if os.environ.get('VERCEL') == '1' and os.environ.get('CLOUDINARY_CLOUD_NAME'):
+            import cloudinary.uploader
+            try:
+                cloudinary.uploader.destroy(f"vyas_uploads/{user.profile_photo}")
+            except Exception as e:
+                print(e)
+        else:
+            old_path = os.path.join(current_app.config['UPLOAD_FOLDER'], user.profile_photo)
+            if os.path.exists(old_path):
+                os.remove(old_path)
 
     # Save new photo
     filename = secure_filename(file.filename)
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f"profile_{user.id}_{timestamp}_{filename}"
-    file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-    file.save(file_path)
+    
+    if os.environ.get('VERCEL') == '1' and os.environ.get('CLOUDINARY_CLOUD_NAME'):
+        import cloudinary.uploader
+        cloudinary.uploader.upload(
+            file,
+            public_id=filename,
+            folder="vyas_uploads"
+        )
+    else:
+        file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
 
     user.profile_photo = filename
     db.session.commit()
@@ -281,9 +297,16 @@ def remove_profile_photo():
     import os
     user = User.query.get(session['user_id'])
     if user.profile_photo:
-        old_path = os.path.join(current_app.config['UPLOAD_FOLDER'], user.profile_photo)
-        if os.path.exists(old_path):
-            os.remove(old_path)
+        if os.environ.get('VERCEL') == '1' and os.environ.get('CLOUDINARY_CLOUD_NAME'):
+            import cloudinary.uploader
+            try:
+                cloudinary.uploader.destroy(f"vyas_uploads/{user.profile_photo}")
+            except Exception as e:
+                print(e)
+        else:
+            old_path = os.path.join(current_app.config['UPLOAD_FOLDER'], user.profile_photo)
+            if os.path.exists(old_path):
+                os.remove(old_path)
         user.profile_photo = None
         db.session.commit()
     return jsonify({'success': True})

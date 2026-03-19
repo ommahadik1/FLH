@@ -133,8 +133,19 @@ def submit_report():
             # Add timestamp to filename to avoid collisions
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             filename = f"{timestamp}_{filename}"
-            file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
-            file.save(file_path)
+            
+            if os.environ.get('VERCEL') == '1' and os.environ.get('CLOUDINARY_CLOUD_NAME'):
+                import cloudinary.uploader
+                # Upload directly to Cloudinary
+                cloudinary.uploader.upload(
+                    file, 
+                    public_id=filename,
+                    folder="vyas_uploads"
+                )
+            else:
+                file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+                file.save(file_path)
+                
             image_filename = filename
     
     try:
